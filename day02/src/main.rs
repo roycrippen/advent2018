@@ -2,7 +2,7 @@ use itertools;
 use itertools::Itertools;
 
 fn main() {
-    let xs: Vec<&str> = include_str!("data.txt").lines().collect();
+    let xs: Vec<_> = include_str!("data.txt").lines().collect();
 
     println!("part a: {}", part_a(&xs));
     println!("part b: {}", part_b(&xs));
@@ -47,9 +47,9 @@ fn diff_by_one_char(s1: &str, s2: &str) -> Option<String> {
 }
 
 fn occurences(s: &&str) -> (bool, bool) {
-    let mut chars: Vec<char> = s.chars().collect();
-    chars.sort();
-    let xs: Vec<usize> = chars
+    let mut bs: Vec<_> = s.bytes().collect();
+    bs.sort();
+    let xs: Vec<usize> = bs
         .iter()
         .group_by(|elt| *elt)
         .into_iter()
