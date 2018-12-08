@@ -2,23 +2,20 @@ use itertools;
 use itertools::Itertools;
 
 fn main() {
-    let xs: Vec<String> = include_str!("data.txt")
-        .lines()
-        .map(|elt| elt.to_string())
-        .collect();
+    let xs: Vec<&str> = include_str!("data.txt").lines().collect();
 
     println!("part a: {}", part_a(&xs));
     println!("part b: {}", part_b(&xs));
 }
 
-fn part_a(xs: &Vec<String>) -> usize {
-    let (twos, threes): (Vec<bool>, Vec<bool>) = xs.iter().map(occurences).unzip();
+fn part_a(xs: &Vec<&str>) -> usize {
+    let (twos, threes): (Vec<bool>, Vec<bool>) = xs.into_iter().map(occurences).unzip();
     let two = twos.iter().filter(|elt| **elt).count();
     let three = threes.iter().filter(|elt| **elt).count();
     two * three
 }
 
-fn part_b(xs: &Vec<String>) -> String {
+fn part_b(xs: &Vec<&str>) -> String {
     for x in xs {
         for y in xs {
             match diff_by_one_char(&x, &y) {
@@ -30,19 +27,17 @@ fn part_b(xs: &Vec<String>) -> String {
     "NO MATCH".to_string()
 }
 
-fn diff_by_one_char(s1: &String, s2: &String) -> Option<String> {
+fn diff_by_one_char(s1: &str, s2: &str) -> Option<String> {
     if s1.len() != s2.len() {
         return None;
     }
 
-    let cs1: Vec<char> = s1.chars().collect();
-    let cs2: Vec<char> = s2.chars().collect();
-
-    let res_str: String = cs1
-        .iter()
-        .zip(cs2.iter())
+    let res_str: String = s1
+        .bytes()
+        .into_iter()
+        .zip(s2.bytes())
         .filter(|(e1, e2)| e1 == e2)
-        .map(|(e1, _)| *e1)
+        .map(|(e1, _)| e1 as char)
         .collect();
 
     match s1.len() - res_str.len() {
@@ -51,7 +46,7 @@ fn diff_by_one_char(s1: &String, s2: &String) -> Option<String> {
     }
 }
 
-fn occurences(s: &String) -> (bool, bool) {
+fn occurences(s: &&str) -> (bool, bool) {
     let mut chars: Vec<char> = s.chars().collect();
     chars.sort();
     let xs: Vec<usize> = chars
@@ -69,15 +64,9 @@ fn occurences(s: &String) -> (bool, bool) {
 mod tests {
     use super::*;
 
-    fn get_test_data() -> Vec<String> {
+    fn get_test_data() -> Vec<&'static str> {
         vec![
-            "abcdef".to_string(),
-            "bababc".to_string(),
-            "abbcde".to_string(),
-            "abcccd".to_string(),
-            "aabcdd".to_string(),
-            "abcdee".to_string(),
-            "ababab".to_string(),
+            "abcdef", "bababc", "abbcde", "abcccd", "aabcdd", "abcdee", "ababab",
         ]
     }
 
