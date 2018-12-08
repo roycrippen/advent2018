@@ -24,7 +24,7 @@ fn part_b(xs: &Vec<&str>) -> String {
             }
         }
     }
-    "NO MATCH".to_string()
+    "NO MATCH FOUND".to_string()
 }
 
 fn diff_by_one_char(s1: &str, s2: &str) -> Option<String> {
