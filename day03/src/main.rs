@@ -1,16 +1,33 @@
 use regex::Regex;
 #[macro_use]
 extern crate lazy_static;
+use std::collections::HashSet;
 // use itertools;
 // use itertools::Itertools;
+
+fn main() {
+    let rects: Vec<Rect> = include_str!("data.txt")
+        .lines()
+        .map(|s| Rect::new(s))
+        .collect();
+
+    let xs: Vec<Rect> = vec![
+        Rect::new("#1 @ 1,3: 4x4"),
+        Rect::new("#2 @ 3,1: 4x4"),
+        Rect::new("#3 @ 5,5: 2x2"),
+    ];
+
+    println!("part a: {}", part_a(&rects)); // 118223
+    println!("part b: {}", part_b(&xs)); // ??
+}
 
 #[derive(Debug, PartialEq, Clone)]
 struct Rect {
     id: u32,
-    x_top: u32,
-    y_top: u32,
-    x_bot: u32,
-    y_bot: u32,
+    x1: u32,
+    y1: u32,
+    x2: u32,
+    y2: u32,
 }
 
 impl Rect {
@@ -23,43 +40,60 @@ impl Rect {
         match RE.captures(claim) {
             Some(caps) => {
                 let id: u32 = caps.get(1).map_or(0, |v| v.as_str().parse().unwrap());
-                let x_top: u32 = caps.get(2).map_or(0, |v| v.as_str().parse().unwrap());
-                let y_top: u32 = caps.get(3).map_or(0, |v| v.as_str().parse().unwrap());
+                let x1: u32 = caps.get(2).map_or(0, |v| v.as_str().parse().unwrap());
+                let y1: u32 = caps.get(3).map_or(0, |v| v.as_str().parse().unwrap());
                 let width: u32 = caps.get(4).map_or(0, |v| v.as_str().parse().unwrap());
                 let height: u32 = caps.get(5).map_or(0, |v| v.as_str().parse().unwrap());
                 Rect {
                     id: id,
-                    x_top: x_top,
-                    y_top: y_top,
-                    x_bot: x_top + width,
-                    y_bot: y_top + height,
+                    x1: x1,
+                    y1: y1,
+                    x2: x1 + width - 1,
+                    y2: y1 + height - 1,
                 }
             }
             None => Rect {
                 id: 0,
-                x_top: 0,
-                y_top: 0,
-                x_bot: 0,
-                y_bot: 0,
+                x1: 0,
+                y1: 0,
+                x2: 0,
+                y2: 0,
             },
         }
     }
+
+    fn overlap(&self, other: &Rect) -> bool {
+        let no_overlap =
+            self.x1 > other.x2 || other.x1 > self.x2 || self.y1 > other.y2 || other.y1 > self.y2;
+        !no_overlap
+    }
+
+    fn make_set(&self) -> HashSet<(u32, u32)> {
+        let mut set = HashSet::new();
+        for i in self.x1..(self.x2 + 1) {
+            for j in self.y1..(self.y2 + 1) {
+                set.insert((i, j));
+            }
+        }
+        set
+    }
 }
 
-fn main() {
-    let rects: Vec<Rect> = include_str!("data.txt")
-        .lines()
-        .map(|s| Rect::new(s))
-        .collect();
-
-    println!("rects length: {}", rects.len());
-
-    println!("part a: {}", part_a(&rects));
-    println!("part b: {}", part_b(&rects));
-}
-
-fn part_a(_xs: &Vec<Rect>) -> usize {
-    10
+fn part_a(recs: &Vec<Rect>) -> usize {
+    let mut xs = Vec::new();
+    for i in 0..recs.len() {
+        for j in (i + 1)..recs.len() {
+            if recs[i].overlap(&recs[j]) {
+                let s1 = recs[i].make_set();
+                let s2 = recs[j].make_set();
+                let mut intersection: Vec<(u32, u32)> = s1.intersection(&s2).cloned().collect();
+                xs.append(&mut intersection);
+            }
+        }
+    }
+    xs.sort();
+    xs.dedup();
+    xs.len()
 }
 
 fn part_b(_xs: &Vec<Rect>) -> String {
@@ -71,7 +105,11 @@ mod tests {
     use super::*;
 
     fn get_test_data() -> Vec<Rect> {
-        vec![Rect::new("#123 @ 3,2: 5x4"), Rect::new("#123 @ 3,2: 5x4")]
+        vec![
+            Rect::new("#1 @ 1,3: 4x4"),
+            Rect::new("#2 @ 3,1: 4x4"),
+            Rect::new("#3 @ 5,5: 2x2"),
+        ]
     }
 
     #[test]
@@ -79,27 +117,27 @@ mod tests {
         let rect = Rect::new("#123 @ 3,2: 5x4");
         let res = Rect {
             id: 123,
-            x_top: 3,
-            y_top: 2,
-            x_bot: 8,
-            y_bot: 6,
+            x1: 3,
+            y1: 2,
+            x2: 7,
+            y2: 5,
         };
         assert_eq!(rect, res);
 
         let rect = Rect::new("#123 @asasa 3,2: 5x4");
         let res = Rect {
             id: 0,
-            x_top: 0,
-            y_top: 0,
-            x_bot: 0,
-            y_bot: 0,
+            x1: 0,
+            y1: 0,
+            x2: 0,
+            y2: 0,
         };
         assert_eq!(rect, res)
     }
 
     #[test]
     fn test_part_a() {
-        assert_eq!(part_a(&get_test_data()), 10);
+        assert_eq!(part_a(&get_test_data()), 4);
     }
 
     #[test]
