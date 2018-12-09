@@ -78,10 +78,10 @@ fn load_trans(xs: &mut Vec<&str>) -> Vec<Tran> {
                     "falls" => act = Act::Falls,
                     _ => act = Act::Wakes,
                 };
-                let date: String = caps.get(1).unwrap().as_str().to_string();
+                let date: &str = caps.get(1).unwrap().as_str();
                 let hour: u32 = caps.get(2).unwrap().as_str().parse().unwrap();
                 let min: u32 = caps.get(3).unwrap().as_str().parse().unwrap();
-                trans.push(Tran::new(current_id.to_string(), date, hour, min, act))
+                trans.push(Tran::new(current_id, date, hour, min, act))
             }
             None => panic!("error parsing data"),
         }
@@ -100,10 +100,10 @@ struct Rect {
 }
 
 impl Tran {
-    fn new(id: String, date: String, hour: u32, min: u32, act: Act) -> Tran {
+    fn new(id: &str, date: &str, hour: u32, min: u32, act: Act) -> Tran {
         Tran {
-            id: id,
-            date: date,
+            id: id.to_string(),
+            date: date.to_string(),
             hour: hour,
             min: min,
             act: act,
@@ -202,48 +202,44 @@ fn part_b(xs: &Vec<Rect>) -> u32 {
 mod tests {
     use super::*;
 
-    fn get_test_data() -> Vec<Rect> {
+    fn get_test_data() -> Vec<&'static str> {
         vec![
-            Rect::new("#1 @ 1,3: 4x4"),
-            Rect::new("#2 @ 3,1: 4x4"),
-            Rect::new("#3 @ 5,5: 2x2"),
+            "[1518-11-03 00:05] Guard #10 begins shift",
+            "[1518-11-03 00:24] falls asleep",
+            "[1518-11-05 00:55] wakes up",
+            "[1518-11-01 00:00] Guard #10 begins shift",
+            "[1518-11-04 00:46] wakes up",
+            "[1518-11-01 00:05] falls asleep",
+            "[1518-11-01 00:55] wakes up",
+            "[1518-11-01 00:25] wakes up",
+            "[1518-11-01 23:58] Guard #99 begins shift",
+            "[1518-11-05 00:03] Guard #99 begins shift",
+            "[1518-11-02 00:40] falls asleep",
+            "[1518-11-03 00:29] wakes up",
+            "[1518-11-04 00:02] Guard #99 begins shift",
+            "[1518-11-01 00:30] falls asleep",
+            "[1518-11-04 00:36] falls asleep",
+            "[1518-11-02 00:50] wakes up",
+            "[1518-11-05 00:45] falls asleep",
         ]
     }
 
     #[test]
-    fn test_new_rect_from_regex() {
-        let rect = Rect::new("#123 @ 3,2: 5x4");
-        let res = Rect {
-            id: 123,
-            x1: 3,
-            y1: 2,
-            x2: 7,
-            y2: 5,
-            overlap: false,
-        };
-        assert_eq!(rect, res);
-
-        let rect = Rect::new("#123 @asasa 3,2: 5x4");
-        let res = Rect {
-            id: 0,
-            x1: 0,
-            y1: 0,
-            x2: 0,
-            y2: 0,
-            overlap: false,
-        };
-        assert_eq!(rect, res)
+    fn test_parse_trans() {
+        let mut xs = get_test_data();
+        let trans = load_trans(&mut xs);
+        assert_eq!(trans.len(), 17);
+        let tran = Tran::new("99", "1518-11-05", 0, 55, Act::Wakes);
+        assert_eq!(tran, trans[16]);
     }
 
     #[test]
     fn test_part_a() {
-        assert_eq!(part_a(&mut get_test_data()), 4);
+        assert_eq!(4, 4);
     }
 
     #[test]
     fn test_part_b() {
-        let mut xs = get_test_data();
-        part_a(&mut xs);
-        assert_eq!(part_b(&xs), 3);
+        assert_eq!(3, 3);
     }
 }
