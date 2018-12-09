@@ -10,7 +10,7 @@ fn main() {
         .collect();
 
     println!("part a: {}", part_a(&mut rects)); // 118223
-    println!("part b: {}", part_b(&rects)); // ??
+    println!("part b: {}", part_b(&rects)); // 412
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -121,6 +121,7 @@ mod tests {
             y1: 2,
             x2: 7,
             y2: 5,
+            overlap: false,
         };
         assert_eq!(rect, res);
 
@@ -131,17 +132,20 @@ mod tests {
             y1: 0,
             x2: 0,
             y2: 0,
+            overlap: false,
         };
         assert_eq!(rect, res)
     }
 
     #[test]
     fn test_part_a() {
-        assert_eq!(part_a(&get_test_data()), 4);
+        assert_eq!(part_a(&mut get_test_data()), 4);
     }
 
     #[test]
     fn test_part_b() {
-        assert_eq!(part_b(&get_test_data()), "NO MATCH FOUND".to_string());
+        let mut xs = get_test_data();
+        part_a(&mut xs);
+        assert_eq!(part_b(&xs), 3);
     }
 }
