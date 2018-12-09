@@ -2,23 +2,15 @@ use regex::Regex;
 #[macro_use]
 extern crate lazy_static;
 use std::collections::HashSet;
-// use itertools;
-// use itertools::Itertools;
 
 fn main() {
-    let rects: Vec<Rect> = include_str!("data.txt")
+    let mut rects: Vec<Rect> = include_str!("data.txt")
         .lines()
         .map(|s| Rect::new(s))
         .collect();
 
-    let xs: Vec<Rect> = vec![
-        Rect::new("#1 @ 1,3: 4x4"),
-        Rect::new("#2 @ 3,1: 4x4"),
-        Rect::new("#3 @ 5,5: 2x2"),
-    ];
-
-    println!("part a: {}", part_a(&rects)); // 118223
-    println!("part b: {}", part_b(&xs)); // ??
+    println!("part a: {}", part_a(&mut rects)); // 118223
+    println!("part b: {}", part_b(&rects)); // ??
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -28,6 +20,7 @@ struct Rect {
     y1: u32,
     x2: u32,
     y2: u32,
+    overlap: bool,
 }
 
 impl Rect {
@@ -50,6 +43,7 @@ impl Rect {
                     y1: y1,
                     x2: x1 + width - 1,
                     y2: y1 + height - 1,
+                    overlap: false,
                 }
             }
             None => Rect {
@@ -58,17 +52,20 @@ impl Rect {
                 y1: 0,
                 x2: 0,
                 y2: 0,
+                overlap: false,
             },
         }
     }
 
-    fn overlap(&self, other: &Rect) -> bool {
+    fn overlaps(&self, other: &Rect) -> bool {
         let no_overlap =
             self.x1 > other.x2 || other.x1 > self.x2 || self.y1 > other.y2 || other.y1 > self.y2;
         !no_overlap
     }
 
-    fn make_set(&self) -> HashSet<(u32, u32)> {
+    fn make_set(&mut self) -> HashSet<(u32, u32)> {
+        // if we are here then the claim overlaps some other
+        self.overlap = true;
         let mut set = HashSet::new();
         for i in self.x1..(self.x2 + 1) {
             for j in self.y1..(self.y2 + 1) {
@@ -79,11 +76,11 @@ impl Rect {
     }
 }
 
-fn part_a(recs: &Vec<Rect>) -> usize {
+fn part_a(recs: &mut Vec<Rect>) -> usize {
     let mut xs = Vec::new();
     for i in 0..recs.len() {
         for j in (i + 1)..recs.len() {
-            if recs[i].overlap(&recs[j]) {
+            if recs[i].overlaps(&recs[j]) {
                 let s1 = recs[i].make_set();
                 let s2 = recs[j].make_set();
                 let mut intersection: Vec<(u32, u32)> = s1.intersection(&s2).cloned().collect();
@@ -96,8 +93,11 @@ fn part_a(recs: &Vec<Rect>) -> usize {
     xs.len()
 }
 
-fn part_b(_xs: &Vec<Rect>) -> String {
-    "NO MATCH FOUND".to_string()
+fn part_b(xs: &Vec<Rect>) -> u32 {
+    match xs.iter().find(|rect| !rect.overlap) {
+        Some(rect) => rect.id,
+        None => 0,
+    }
 }
 
 #[cfg(test)]
