@@ -149,9 +149,6 @@ fn part_a(trans_by_id: &HashMap<String, Vec<Tran>>) -> usize {
         .max_by(|a, b| a.1.cmp(&b.1))
         .unwrap();
 
-    let mut aaa: Mins = [0; 60];
-    (0..60).for_each(|i| aaa[i] = i % 10);
-
     let tot_mins = trans_by_id
         .get(id)
         .unwrap()
