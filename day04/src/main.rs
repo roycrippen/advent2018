@@ -1,12 +1,14 @@
 use regex::Regex;
 #[macro_use]
 extern crate lazy_static;
-use std::collections::HashSet;
+use itertools;
+use itertools::Itertools;
+use std::collections::HashMap;
 
 fn main() {
     let mut _xs: Vec<&str> = include_str!("data.txt").lines().collect();
 
-    let mut zs = vec![
+    let mut _zs = vec![
         "[1518-11-03 00:05] Guard #10 begins shift",
         "[1518-11-03 00:24] falls asleep",
         "[1518-11-05 00:55] wakes up",
@@ -26,176 +28,150 @@ fn main() {
         "[1518-11-05 00:45] falls asleep",
     ];
 
-    let trans = load_trans(&mut zs);
-    // let trans = load_trans(&mut _xs);
-    for tran in &trans {
-        println!("{:?}", tran);
-    }
+    let trans_by_id = load_trans(&mut _xs);
 
-    // let s = parse_record("[1518-11-01 00:00] Guard #10 begins shift");
-    // println!("{}", s)
-
-    // println!("part a: {}", part_a(&mut rects)); // 118223
-    // println!("part b: {}", part_b(&rects)); // 412
+    println!("part a: {}", part_a(&trans_by_id)); // 67558
+                                                  // println!("part b: {}", part_b(&rects)); // 412
 }
 
 #[derive(Debug, PartialEq, Clone)]
 struct Tran {
     id: String,
     date: String,
-    hour: u32,
-    min: u32,
-    act: Act,
+    b_hour: u32,
+    b_min: u32,
+    f_min: u32,
+    w_min: u32,
 }
 
-#[derive(Debug, PartialEq, Clone)]
-enum Act {
-    Begin,
-    Falls,
-    Wakes,
+impl Tran {
+    fn new(id: &str, date: &str, b_hour: u32, b_min: u32, f_min: u32, w_min: u32) -> Tran {
+        Tran {
+            id: id.to_string(),
+            date: date.to_string(),
+            b_hour: b_hour,
+            b_min: b_min,
+            f_min: f_min,
+            w_min: w_min,
+        }
+    }
+
+    fn sleep_mins(self) -> Mins {
+        let mut mins: Mins = [0; 60];
+        let s = self.f_min as usize;
+        let e = self.w_min as usize;
+        for i in s..e {
+            mins[i] = 1;
+        }
+        mins
+    }
 }
 
-fn load_trans(xs: &mut Vec<&str>) -> Vec<Tran> {
+type Mins = [usize; 60];
+
+fn add_mins(a: &Mins, b: &Mins) -> Mins {
+    let mut z: Mins = [0; 60];
+    for i in 0..60 {
+        z[i] = a[i] + b[i];
+    }
+    z
+}
+
+fn load_trans(xs: &mut Vec<&str>) -> HashMap<String, Vec<Tran>> {
     xs.sort();
     lazy_static! {
         static ref RE_BASE: Regex = Regex::new(r"[\[](.+) ([0-9]+):([0-9]+)[\]] (.*)").unwrap();
     }
-    let mut current_id = "None";
+    // hold trans data for 'begin' and 'falls' records to vec can be made in one pass
+    let mut curr_id = "None";
+    let mut curr_b_hour = 60;
+    let mut curr_b_min = 60;
+    let mut curr_f_min = 60;
     let mut trans: Vec<Tran> = Vec::new();
     let mut it = xs.iter();
     while let Some(x) = it.next() {
-        let mut act = Act::Begin;
         match RE_BASE.captures(x) {
             Some(caps) => {
-                // println!("{:?}", caps);
                 let rest: Vec<&str> = caps.get(4).unwrap().as_str().split(" ").collect();
                 let act_str = rest[0];
+                let hour: u32 = caps.get(2).unwrap().as_str().parse().unwrap();
+                let min: u32 = caps.get(3).unwrap().as_str().parse().unwrap();
                 match act_str {
                     "Guard" => {
                         let id_pos = rest[1].find('#').unwrap() + 1;
-                        current_id = rest[1].get(id_pos..).unwrap();
+                        curr_id = rest[1].get(id_pos..).unwrap();
+                        curr_b_hour = hour;
+                        curr_b_min = min;
                     }
-                    "falls" => act = Act::Falls,
-                    _ => act = Act::Wakes,
+                    "falls" => curr_f_min = min,
+                    _ => {
+                        let date: &str = caps.get(1).unwrap().as_str();
+                        trans.push(Tran::new(
+                            curr_id,
+                            date,
+                            curr_b_hour,
+                            curr_b_min,
+                            curr_f_min,
+                            min,
+                        ))
+                    }
                 };
-                let date: &str = caps.get(1).unwrap().as_str();
-                let hour: u32 = caps.get(2).unwrap().as_str().parse().unwrap();
-                let min: u32 = caps.get(3).unwrap().as_str().parse().unwrap();
-                trans.push(Tran::new(current_id, date, hour, min, act))
             }
             None => panic!("error parsing data"),
         }
     }
-    trans
+
+    // order before creating hashmap by 'id'
+    trans.sort_by(|a, b| {
+        let compound_a = a.id.clone() + &a.date;
+        let compound_b = b.id.clone() + &b.date;
+        compound_a.cmp(&compound_b)
+    });
+
+    let trans_by_id: HashMap<String, Vec<Tran>> = trans
+        .iter()
+        .group_by(|elt| elt.id.clone())
+        .into_iter()
+        .map(|(id, group)| (id, group.cloned().collect()))
+        .collect();
+
+    trans_by_id
 }
 
-#[derive(Debug, PartialEq, Clone)]
-struct Rect {
-    id: u32,
-    x1: u32,
-    y1: u32,
-    x2: u32,
-    y2: u32,
-    overlap: bool,
+fn calc_sleep_mins(trans: &Vec<Tran>) -> u32 {
+    trans.iter().map(|tran| tran.w_min - tran.f_min).sum()
 }
 
-impl Tran {
-    fn new(id: &str, date: &str, hour: u32, min: u32, act: Act) -> Tran {
-        Tran {
-            id: id.to_string(),
-            date: date.to_string(),
-            hour: hour,
-            min: min,
-            act: act,
-        }
-    }
+fn part_a(trans_by_id: &HashMap<String, Vec<Tran>>) -> usize {
+    let (id, _max_sleep) = trans_by_id
+        .iter()
+        .map(|(id, ls)| (id, calc_sleep_mins(&ls)))
+        .max_by(|a, b| a.1.cmp(&b.1))
+        .unwrap();
+
+    let mut aaa: Mins = [0; 60];
+    (0..60).for_each(|i| aaa[i] = i % 10);
+
+    let tot_mins = trans_by_id
+        .get(id)
+        .unwrap()
+        .iter()
+        .fold([0; 60], |acc, tran| {
+            add_mins(&acc, &tran.clone().sleep_mins())
+        });
+
+    let (day, _mins) = tot_mins
+        .iter()
+        .enumerate()
+        .max_by(|a, b| a.1.cmp(&b.1))
+        .unwrap();
+
+    let id: usize = id.parse().unwrap();
+    day * id
 }
 
-impl Rect {
-    fn new(claim: &str) -> Rect {
-        lazy_static! {
-            static ref RE: Regex =
-                Regex::new(r"#([0-9]+) @ ([0-9]+),([0-9]+): ([0-9]+)x([0-9]+)").unwrap();
-        }
-
-        match RE.captures(claim) {
-            Some(caps) => {
-                let id: u32 = caps.get(1).map_or(0, |v| v.as_str().parse().unwrap());
-                let x1: u32 = caps.get(2).map_or(0, |v| v.as_str().parse().unwrap());
-                let y1: u32 = caps.get(3).map_or(0, |v| v.as_str().parse().unwrap());
-                let width: u32 = caps.get(4).map_or(0, |v| v.as_str().parse().unwrap());
-                let height: u32 = caps.get(5).map_or(0, |v| v.as_str().parse().unwrap());
-                Rect {
-                    id: id,
-                    x1: x1,
-                    y1: y1,
-                    x2: x1 + width - 1,
-                    y2: y1 + height - 1,
-                    overlap: false,
-                }
-            }
-            None => Rect {
-                id: 0,
-                x1: 0,
-                y1: 0,
-                x2: 0,
-                y2: 0,
-                overlap: false,
-            },
-        }
-    }
-
-    fn overlaps(&self, other: &Rect) -> bool {
-        let no_overlap =
-            self.x1 > other.x2 || other.x1 > self.x2 || self.y1 > other.y2 || other.y1 > self.y2;
-        !no_overlap
-    }
-
-    fn make_set(&mut self) -> HashSet<(u32, u32)> {
-        // if we are here then the claim overlaps some other
-        self.overlap = true;
-        let mut set = HashSet::new();
-        for i in self.x1..(self.x2 + 1) {
-            for j in self.y1..(self.y2 + 1) {
-                set.insert((i, j));
-            }
-        }
-        set
-    }
-}
-
-fn parse_record(ticket: &str) -> String {
-    lazy_static! {
-        static ref RE_BASE: Regex =
-            Regex::new(r"[\[](.+) ([0-9]+):([0-9]+)[\]] (.*)").unwrap();
-            // Regex::new(r"[\[]([0-9]+)[-]([0-9]+)[-]([0-9]+) ([0-9]+):([0-9]+)[\]] (.*)").unwrap();
-    }
-    let aaa = RE_BASE.captures(ticket);
-    format!("{:?}", aaa)
-}
-
-fn part_a(recs: &mut Vec<Rect>) -> usize {
-    let mut xs = Vec::new();
-    for i in 0..recs.len() {
-        for j in (i + 1)..recs.len() {
-            if recs[i].overlaps(&recs[j]) {
-                let s1 = recs[i].make_set();
-                let s2 = recs[j].make_set();
-                let mut intersection: Vec<(u32, u32)> = s1.intersection(&s2).cloned().collect();
-                xs.append(&mut intersection);
-            }
-        }
-    }
-    xs.sort();
-    xs.dedup();
-    xs.len()
-}
-
-fn part_b(xs: &Vec<Rect>) -> u32 {
-    match xs.iter().find(|rect| !rect.overlap) {
-        Some(rect) => rect.id,
-        None => 0,
-    }
+fn part_b(trans_by_id: &HashMap<String, Vec<Tran>>) -> u32 {
+    0
 }
 
 #[cfg(test)]
@@ -227,15 +203,27 @@ mod tests {
     #[test]
     fn test_parse_trans() {
         let mut xs = get_test_data();
-        let trans = load_trans(&mut xs);
-        assert_eq!(trans.len(), 17);
-        let tran = Tran::new("99", "1518-11-05", 0, 55, Act::Wakes);
-        assert_eq!(tran, trans[16]);
+        let trans_by_id = load_trans(&mut xs);
+        assert_eq!(trans_by_id.len(), 2);
+        assert_eq!(trans_by_id.get("10").unwrap().len(), 3);
+        assert_eq!(trans_by_id.get("99").unwrap().len(), 3);
+        let tran = Tran::new("99", "1518-11-02", 23, 58, 40, 50);
+        assert_eq!(tran, trans_by_id.get("99").unwrap()[0]);
+    }
+
+    #[test]
+    fn test_sleep_mins() {
+        let mut xs = get_test_data();
+        let trans_by_id = load_trans(&mut xs);
+        assert_eq!(calc_sleep_mins(&trans_by_id.get("10").unwrap()), 50);
+        assert_eq!(calc_sleep_mins(&trans_by_id.get("99").unwrap()), 30);
     }
 
     #[test]
     fn test_part_a() {
-        assert_eq!(4, 4);
+        let mut xs = get_test_data();
+        let trans_by_id = load_trans(&mut xs);
+        assert_eq!(part_a(&trans_by_id), 240);
     }
 
     #[test]
