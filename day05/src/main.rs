@@ -1,6 +1,5 @@
 fn main() {
     let s: String = include_str!("data.txt").to_string();
-    // let s: String = "dabAcCaCBAcCcaDA".to_string();
 
     println!("part a: {}", part_a(&s)); // 10638
     println!("part b: {}", part_b(&s)); // 4944
