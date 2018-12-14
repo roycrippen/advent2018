@@ -7,31 +7,10 @@ use std::collections::HashMap;
 
 fn main() {
     let mut _xs: Vec<&str> = include_str!("data.txt").lines().collect();
-
-    let mut _zs = vec![
-        "[1518-11-03 00:05] Guard #10 begins shift",
-        "[1518-11-03 00:24] falls asleep",
-        "[1518-11-05 00:55] wakes up",
-        "[1518-11-01 00:00] Guard #10 begins shift",
-        "[1518-11-04 00:46] wakes up",
-        "[1518-11-01 00:05] falls asleep",
-        "[1518-11-01 00:55] wakes up",
-        "[1518-11-01 00:25] wakes up",
-        "[1518-11-01 23:58] Guard #99 begins shift",
-        "[1518-11-05 00:03] Guard #99 begins shift",
-        "[1518-11-02 00:40] falls asleep",
-        "[1518-11-03 00:29] wakes up",
-        "[1518-11-04 00:02] Guard #99 begins shift",
-        "[1518-11-01 00:30] falls asleep",
-        "[1518-11-04 00:36] falls asleep",
-        "[1518-11-02 00:50] wakes up",
-        "[1518-11-05 00:45] falls asleep",
-    ];
-
     let trans_by_id = load_trans(&mut _xs);
 
     println!("part a: {}", part_a(&trans_by_id)); // 67558
-                                                  // println!("part b: {}", part_b(&rects)); // 412
+    println!("part b: {}", part_b(&trans_by_id)); // 78990
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -142,33 +121,44 @@ fn calc_sleep_mins(trans: &Vec<Tran>) -> u32 {
     trans.iter().map(|tran| tran.w_min - tran.f_min).sum()
 }
 
+fn find_max_sleep_minute(ts: &Vec<Tran>) -> (usize, usize) {
+    let tot_mins = ts.iter().fold([0; 60], |acc, tran| {
+        add_mins(&acc, &tran.clone().sleep_mins())
+    });
+    let (max_sleep_min, sum_max_mins) = tot_mins
+        .iter()
+        .enumerate()
+        .max_by(|a, b| a.1.cmp(&b.1))
+        .unwrap();
+
+    (max_sleep_min, *sum_max_mins)
+}
+
 fn part_a(trans_by_id: &HashMap<String, Vec<Tran>>) -> usize {
+    // find guard with most sleep time
     let (id, _max_sleep) = trans_by_id
         .iter()
         .map(|(id, ls)| (id, calc_sleep_mins(&ls)))
         .max_by(|a, b| a.1.cmp(&b.1))
         .unwrap();
 
-    let tot_mins = trans_by_id
-        .get(id)
-        .unwrap()
-        .iter()
-        .fold([0; 60], |acc, tran| {
-            add_mins(&acc, &tran.clone().sleep_mins())
-        });
-
-    let (day, _mins) = tot_mins
-        .iter()
-        .enumerate()
-        .max_by(|a, b| a.1.cmp(&b.1))
-        .unwrap();
-
+    let (max_sleep_min, _sum_max_mins) = find_max_sleep_minute(trans_by_id.get(id).unwrap());
     let id: usize = id.parse().unwrap();
-    day * id
+    max_sleep_min * id
 }
 
-fn part_b(trans_by_id: &HashMap<String, Vec<Tran>>) -> u32 {
-    0
+fn part_b(trans_by_id: &HashMap<String, Vec<Tran>>) -> usize {
+    // find min where sleep sum is maximum for each guard
+    let xs: Vec<_> = trans_by_id
+        .iter()
+        .map(|(id, ls)| (id, find_max_sleep_minute(&ls)))
+        .map(|(id, (min, sum))| (id, min, sum))
+        .collect();
+
+    let (id, max_sleep_min, _sum) = xs.iter().max_by(|a, b| a.2.cmp(&b.2)).unwrap();
+
+    let id: usize = id.parse().unwrap();
+    max_sleep_min * id
 }
 
 #[cfg(test)]
@@ -225,6 +215,8 @@ mod tests {
 
     #[test]
     fn test_part_b() {
-        assert_eq!(3, 3);
+        let mut xs = get_test_data();
+        let trans_by_id = load_trans(&mut xs);
+        assert_eq!(part_b(&trans_by_id), 4455);
     }
 }
