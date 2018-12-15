@@ -42,13 +42,13 @@ fn get_bounds(points: &Vec<Point>) -> (i32, i32, i32, i32) {
     let min_y = points.iter().min_by(|a, b| a.y.cmp(&b.y)).unwrap().y;
     let max_x = points.iter().max_by(|a, b| a.x.cmp(&b.x)).unwrap().x;
     let max_y = points.iter().max_by(|a, b| a.y.cmp(&b.y)).unwrap().y;
+
     (min_x, min_y, max_x, max_y)
 }
 
 fn build_grid(points: &Vec<Point>) -> Vec<(Point, usize)> {
-    let (min_x, min_y, max_x, max_y) = get_bounds(&points);
-
     // build hash map of (point, min distance) for all coordinates
+    let (min_x, min_y, max_x, max_y) = get_bounds(&points);
     let mut grid: Vec<(Point, usize)> = vec![];
     for x in min_x..max_x + 1 {
         for y in min_y..max_y + 1 {
@@ -70,7 +70,6 @@ fn build_grid(points: &Vec<Point>) -> Vec<(Point, usize)> {
     // get list of infinite area ids
     let x_bounds = [min_x, max_x];
     let y_bounds = [min_y, max_y];
-
     let remove_ids: HashSet<usize> = grid
         .iter()
         .filter(|(p, _id)| x_bounds.contains(&p.x) || y_bounds.contains(&p.y))
@@ -90,7 +89,6 @@ fn build_grid(points: &Vec<Point>) -> Vec<(Point, usize)> {
 fn find_largest_area(grid: &Vec<(Point, usize)>) -> usize {
     let mut xs: Vec<usize> = grid.iter().map(|(_point, id)| *id).collect();
     xs.sort();
-
     let xs: Vec<(usize, usize)> = xs
         .iter()
         .group_by(|id| *id)
@@ -99,6 +97,7 @@ fn find_largest_area(grid: &Vec<(Point, usize)>) -> usize {
         .collect();
 
     let (_id, count) = xs.iter().max_by(|a, b| a.1.cmp(&b.1)).unwrap();
+
     *count
 }
 
@@ -111,7 +110,6 @@ fn part_a(points: &Vec<Point>) -> usize {
 
 fn part_b(points: &Vec<Point>, dist: i32) -> usize {
     let (min_x, min_y, max_x, max_y) = get_bounds(&points);
-
     let res = (min_x..max_x)
         .flat_map(|x| {
             (min_y..max_y).filter(move |y| Point::new(x, *y).total_distance(&points) < dist)
