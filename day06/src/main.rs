@@ -1,6 +1,5 @@
 use itertools;
 use itertools::Itertools;
-use std::collections::HashMap;
 
 fn main() {
     let points: Vec<Point> = include_str!("data.txt")
@@ -20,7 +19,7 @@ fn main() {
     //     Point::new(8, 9),
     // ];
 
-    println!("part a: {}", part_a(&points)); // ?
+    println!("part a: {}", part_a(&points)); // 3293
     println!("part b: {}", part_b(&points)); // ?
 }
 
@@ -40,14 +39,22 @@ impl Point {
     }
 }
 
-fn build_grid(points: &Vec<Point>) -> HashMap<Point, usize> {
+fn build_grid(points: &Vec<Point>) -> Vec<(Point, usize)> {
     let min_x = points.iter().min_by(|a, b| a.x.cmp(&b.x)).unwrap().x;
     let min_y = points.iter().min_by(|a, b| a.y.cmp(&b.y)).unwrap().y;
     let max_x = points.iter().max_by(|a, b| a.x.cmp(&b.x)).unwrap().x;
     let max_y = points.iter().max_by(|a, b| a.y.cmp(&b.y)).unwrap().y;
+    let x_bounds = [min_x, max_x];
+    let y_bounds = [min_y, max_y];
 
+    let mut exclude_ids: Vec<usize> = vec![];
+    for (i, p) in points.iter().enumerate() {
+        if x_bounds.contains(&p.x) || y_bounds.contains(&p.y) {
+            exclude_ids.push(i);
+        }
+    }
     // build hash map of (point, min distance) for all coordinates
-    let mut grid: HashMap<Point, usize> = HashMap::new();
+    let mut grid: Vec<(Point, usize)> = vec![];
     for x in min_x..max_x + 1 {
         for y in min_y..max_y + 1 {
             let p = Point::new(x, y);
@@ -57,16 +64,20 @@ fn build_grid(points: &Vec<Point>) -> HashMap<Point, usize> {
                 .map(|(i, point)| (p.distance(point), i))
                 .collect();
             ds.sort();
-            if ds.get(0).unwrap().0 != ds.get(1).unwrap().0 {
-                grid.insert(p, ds.get(0).unwrap().1);
+            let (first_distance, first_id) = ds.get(0).unwrap();
+            let (second_distance, _second_id) = ds.get(1).unwrap();
+            if first_distance != second_distance {
+                grid.push((p, *first_id));
             }
         }
     }
 
     // get list of infinite area ids
+    let x_bounds = [min_x, max_x];
+    let y_bounds = [min_y, max_y];
     let mut remove_ids: Vec<usize> = vec![];
-    for (p, id) in grid.clone().iter() {
-        if p.x == min_x || p.x == max_x || p.y == min_y || p.y == max_y {
+    for (p, id) in grid.iter() {
+        if x_bounds.contains(&p.x) || y_bounds.contains(&p.y) {
             remove_ids.push(*id);
         }
     }
@@ -83,7 +94,7 @@ fn build_grid(points: &Vec<Point>) -> HashMap<Point, usize> {
     grid
 }
 
-fn find_largest_area(grid: &HashMap<Point, usize>) -> usize {
+fn find_largest_area(grid: &Vec<(Point, usize)>) -> usize {
     let mut xs: Vec<usize> = grid.iter().map(|(_point, id)| *id).collect();
     xs.sort();
 
